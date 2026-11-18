@@ -19,7 +19,7 @@ import {
 
 
 
-import upload from '../middleware/upload.js';
+import upload, { persistUploads } from '../middleware/upload.js';
 const router = express.Router();
 
 // --- ADMIN ROUTES ---
@@ -27,14 +27,14 @@ router.post('/register', registerAdmin);
 router.post('/login', loginAdmin);
 
 // --- PACKAGE ROUTES ---
-router.post('/packages/add', upload.single('packageImage'), addPackage);
+router.post('/packages/add', upload.single('packageImage'), persistUploads('packages'), addPackage);
 router.get('/packages/all', getAllPackages);
-router.put('/packages/update/:id', upload.single('packageImage'), updatePackage);
+router.put('/packages/update/:id', upload.single('packageImage'), persistUploads('packages'), updatePackage);
 router.delete('/packages/delete/:id', deletePackage);
 
 // --- PHOTOS & VIDEOS ROUTES ---
-router.post('/media/add', upload.single('file'), addMedia);
-router.put('/media/update/:id', upload.single('file'), updateMedia);
+router.post('/media/add', upload.single('file'), persistUploads('media'), addMedia);
+router.put('/media/update/:id', upload.single('file'), persistUploads('media'), updateMedia);
 router.get('/media/all', getAllMedia);
 router.delete('/media/delete/:id', deleteMedia);
 

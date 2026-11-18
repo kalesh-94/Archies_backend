@@ -146,6 +146,14 @@
 import Media from '../models/mediaModel.js';
 import fs from 'fs';
 import path from 'path';
+import { getStoredFileValue, toPublicFileUrl } from '../middleware/upload.js';
+
+// Ensure `file` is always something the frontend can render
+const withPublicFile = (item) => {
+    if (!item) return item;
+    const obj = typeof item.toObject === 'function' ? item.toObject() : item;
+    return { ...obj, file: toPublicFileUrl(obj.file, obj.mediaType === 'video' ? 'video' : 'image') };
+};
 
 // 1. Add Media
 export const addMedia = async (req, res) => {
@@ -161,11 +169,11 @@ export const addMedia = async (req, res) => {
             mediaType,
             category,
             videoUrl: videoUrl || "",
-            file: req.file.filename // 👈 Model ke field 'file' ke sath matched
+            file: getStoredFileValue(req.file) // Cloudinary URL, ya local filename
         });
 
         await newMedia.save();
-        res.status(201).json({ success: true, message: "Media Uploaded!", data: newMedia });
+        res.status(201).json({ success: true, message: "Media Uploaded!", data: withPublicFile(newMedia) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -175,7 +183,7 @@ export const addMedia = async (req, res) => {
 export const getAllMedia = async (req, res) => {
     try {
         const media = await Media.find().sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: media });
+        res.status(200).json({ success: true, data: media.map(withPublicFile) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -234,7 +242,7 @@ export const updateMedia = async (req, res) => {
                     fs.unlinkSync(oldFilePath);
                 }
             }
-            updateData.file = req.file.filename; // 👈 Nayi file ka naam 'file' mein save hoga
+            updateData.file = getStoredFileValue(req.file); // Cloudinary URL, ya local filename
         }
 
         const updatedMedia = await Media.findByIdAndUpdate(
@@ -246,7 +254,7 @@ export const updateMedia = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Media updated successfully!",
-            data: updatedMedia
+            data: withPublicFile(updatedMedia)
         });
 
     } catch (error) {

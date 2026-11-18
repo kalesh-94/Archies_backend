@@ -31,6 +31,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import cloudinary, { isCloudinaryConfigured } from '../config/cloudinary.js';
 
 // Create uploads folder if it doesn't exist
 const uploadPath = path.resolve(process.cwd(), 'uploads');
@@ -70,3 +71,70 @@ const upload = multer({
 });
 
 export default upload;
+
+// Collect files from upload.single() (req.file) and upload.fields()/array() (req.files)
+const collectFiles = (req) => {
+    if (req.file) return [req.file];
+    if (Array.isArray(req.files)) return req.files;
+    if (req.files && typeof req.files === 'object') return Object.values(req.files).flat();
+    return [];
+};
+
+const removeTempFile = (file) =>
+    fs.promises.unlink(file.path).catch(() => { /* already gone */ });
+
+/**
+ * Runs after multer. When Cloudinary is configured, moves each uploaded file
+ * from the local temp folder to Cloudinary and stores its public HTTPS URL on
+ * file.cloudinaryUrl. Hosts like Render wipe the local disk on every restart,
+ * so files kept only in uploads/ disappear and the website shows broken images.
+ *
+ * Without Cloudinary credentials (e.g. local development) the file simply stays
+ * in uploads/ and is served by express.static, exactly as before.
+ */
+export const persistUploads = (folder) => async (req, res, next) => {
+    const files = collectFiles(req);
+    if (files.length === 0 || !isCloudinaryConfigured()) return next();
+
+    try {
+        await Promise.all(files.map(async (file) => {
+            const result = await cloudinary.uploader.upload(file.path, {
+                folder: `archies/${folder}`,
+                resource_type: 'auto'
+            });
+            file.cloudinaryUrl = result.secure_url;
+        }));
+    } catch (error) {
+        console.error('Cloudinary upload failed:', error);
+        return res.status(502).json({
+            success: false,
+            message: `Image upload failed: ${error.message || 'Cloudinary error'}`
+        });
+    } finally {
+        // The temp copy is never needed once Cloudinary is in use (success or failure)
+        await Promise.all(files.map(removeTempFile));
+    }
+
+    next();
+};
+
+// Value to save in MongoDB for an uploaded file: the full Cloudinary URL, or the
+// local filename (served from /uploads) when Cloudinary is not configured.
+export const getStoredFileValue = (file) => file?.cloudinaryUrl || file?.filename || '';
+
+/**
+ * Turns a stored file value into something the frontend can render directly.
+ * Older records saved only a bare Cloudinary public_id (e.g. "packages/xp41kljg...")
+ * instead of the URL, so the website built "/uploads/packages/..." links that 404.
+ * Full URLs and local filenames ("1715000000000.jpg") are returned unchanged.
+ */
+export const toPublicFileUrl = (value, resourceType = 'image') => {
+    if (!value || /^https?:\/\//i.test(value) || value.startsWith('uploads/')) return value;
+
+    const looksLikeCloudinaryId = value.includes('/') && !path.extname(value);
+    if (looksLikeCloudinaryId && isCloudinaryConfigured()) {
+        return cloudinary.url(value, { secure: true, resource_type: resourceType, urlAnalytics: false });
+    }
+
+    return value;
+};
