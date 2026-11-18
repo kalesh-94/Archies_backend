@@ -83,6 +83,12 @@ const collectFiles = (req) => {
 const removeTempFile = (file) =>
     fs.promises.unlink(file.path).catch(() => { /* already gone */ });
 
+// Render sets RENDER=true; its local disk is wiped on every restart/redeploy
+const isEphemeralHost = () => process.env.RENDER === 'true';
+
+// Where uploaded files currently go (used by GET /api/health)
+export const getStorageMode = () => (isCloudinaryConfigured() ? 'cloudinary' : 'local');
+
 /**
  * Runs after multer. When Cloudinary is configured, moves each uploaded file
  * from the local temp folder to Cloudinary and stores its public HTTPS URL on
@@ -91,10 +97,27 @@ const removeTempFile = (file) =>
  *
  * Without Cloudinary credentials (e.g. local development) the file simply stays
  * in uploads/ and is served by express.static, exactly as before.
+ *
+ * On Render without Cloudinary the upload is rejected: the file would be deleted
+ * on the next restart and the website would show "Image Not Found". Set
+ * ALLOW_LOCAL_UPLOADS=true to accept temporary local uploads anyway.
  */
 export const persistUploads = (folder) => async (req, res, next) => {
     const files = collectFiles(req);
-    if (files.length === 0 || !isCloudinaryConfigured()) return next();
+    if (files.length === 0) return next();
+
+    if (!isCloudinaryConfigured()) {
+        if (isEphemeralHost() && process.env.ALLOW_LOCAL_UPLOADS !== 'true') {
+            await Promise.all(files.map(removeTempFile));
+            return res.status(503).json({
+                success: false,
+                message: 'Image storage is not configured on the server. Add CLOUDINARY_CLOUD_NAME, ' +
+                    'CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET in the Render environment settings, ' +
+                    'otherwise uploaded images are deleted when the server restarts.'
+            });
+        }
+        return next();
+    }
 
     try {
         await Promise.all(files.map(async (file) => {

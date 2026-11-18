@@ -72,6 +72,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/connectDB.js';
 import adminRoutes from './route/adminRoute.js';
+import { getStorageMode } from './middleware/upload.js';
 
 dotenv.config();
 
@@ -91,6 +92,11 @@ app.use('/uploads', express.static('uploads'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');
+});
+
+// Quick check that uploads are stored permanently: storage should be "cloudinary" on Render
+app.get('/api/health', (req, res) => {
+    res.json({ success: true, storage: getStorageMode() });
 });
 
 app.use('/api/admin', adminRoutes);

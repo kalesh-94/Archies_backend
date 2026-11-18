@@ -24,10 +24,11 @@ import mongoose from 'mongoose';
 
 const mediaSchema = new mongoose.Schema({
     title: { type: String, required: true },
-    category: { 
-        type: String, 
-        enum: ['Bridal', 'Party', 'Studio', 'Classes'], 
-        required: true 
+    category: {
+        type: String,
+        // Must match the categories offered in the dashboard (AddMedia) and the website gallery filter
+        enum: ['Bridal', 'Groom', 'Party', 'Studio', 'Classes'],
+        required: true
     },
     mediaType: { 
         type: String, 
