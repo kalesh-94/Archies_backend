@@ -1,4 +1,8 @@
 import Review from '../models/reviewModel.js';
+import { getStoredFileValue, withPublicFiles } from '../middleware/upload.js';
+
+// Image fields returned as URLs/filenames the website can render
+const FILE_FIELDS = ['clientPhoto'];
 
 // Add New Review / Testimonial
 export const addReview = async (req, res) => {
@@ -6,7 +10,7 @@ export const addReview = async (req, res) => {
         const { clientName, serviceUsed, message, rating } = req.body;
         
         // Agar multer ke zariye photo upload hui hai toh uska path lein
-        const clientPhoto = req.file ? req.file.path : '';
+        const clientPhoto = getStoredFileValue(req.file); // pehle server ka disk path save hota tha
 
         const newReview = new Review({
             clientName,
@@ -20,7 +24,7 @@ export const addReview = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Review posted successfully!',
-            data: savedReview
+            data: withPublicFiles(savedReview, FILE_FIELDS)
         });
     } catch (error) {
         res.status(500).json({
@@ -37,7 +41,7 @@ export const getAllReviews = async (req, res) => {
         res.status(200).json({
             success: true,
             count: reviews.length,
-            data: reviews
+            data: reviews.map((r) => withPublicFiles(r, FILE_FIELDS))
         });
     } catch (error) {
         res.status(500).json({
@@ -77,7 +81,7 @@ export const updateReview = async (req, res) => {
 
         // Agar nayi photo upload ki gayi hai toh use bhi update data me jodein
         if (req.file) {
-            updateData.clientPhoto = req.file.path;
+            updateData.clientPhoto = getStoredFileValue(req.file);
         }
 
         const updatedReview = await Review.findByIdAndUpdate(
@@ -96,7 +100,7 @@ export const updateReview = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Review updated successfully',
-            data: updatedReview
+            data: withPublicFiles(updatedReview, FILE_FIELDS)
         });
     } catch (error) {
         res.status(500).json({

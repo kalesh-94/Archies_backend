@@ -1,13 +1,17 @@
 import FashionShow from '../models/fashionShowModel.js';
 import FashionShowRegistration from '../models/fashionShowRegistrationModel.js';
+import { getStoredFileValue, withPublicFiles } from '../middleware/upload.js';
+
+// Image fields returned as URLs/filenames the website can render
+const FILE_FIELDS = ['banner', 'qrCode'];
 // 1. Create Event (POST)
 export const createFashionShow = async (req, res) => {
     try {
         const { title, description, eventDate, venue, categories } = req.body;
         
         // Multer se aayi hui files ke paths
-        const banner = req.files?.banner ? req.files.banner[0].path : '';
-        const qrCode = req.files?.qrCode ? req.files.qrCode[0].path : '';
+        const banner = getStoredFileValue(req.files?.banner?.[0]);
+        const qrCode = getStoredFileValue(req.files?.qrCode?.[0]);
 
         const parsedCategories = typeof categories === 'string' ? JSON.parse(categories) : categories;
 
@@ -22,7 +26,7 @@ export const createFashionShow = async (req, res) => {
         });
 
         await newShow.save();
-        res.status(201).json({ success: true, message: 'Fashion show created successfully', data: newShow });
+        res.status(201).json({ success: true, message: 'Fashion show created successfully', data: withPublicFiles(newShow, FILE_FIELDS) });
     } catch (err) {
         console.error("Create Error:", err);
         res.status(500).json({ success: false, message: err.message });
@@ -33,7 +37,7 @@ export const createFashionShow = async (req, res) => {
 export const getAllFashionShows = async (req, res) => {
     try {
         const shows = await FashionShow.find().sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: shows });
+        res.status(200).json({ success: true, data: shows.map((s) => withPublicFiles(s, FILE_FIELDS)) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -58,12 +62,12 @@ export const updateFashionShow = async (req, res) => {
 
         // Agar nayi banner image upload ki hai toh use update karein
         if (req.files?.banner) {
-            updateData.banner = req.files.banner[0].path;
+            updateData.banner = getStoredFileValue(req.files.banner[0]);
         }
 
         // Agar naya QR code upload kiya hai toh use update karein
         if (req.files?.qrCode) {
-            updateData.qrCode = req.files.qrCode[0].path;
+            updateData.qrCode = getStoredFileValue(req.files.qrCode[0]);
         }
 
         const updatedShow = await FashionShow.findByIdAndUpdate(id, updateData, { new: true });
@@ -72,7 +76,7 @@ export const updateFashionShow = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Event not found' });
         }
 
-        res.status(200).json({ success: true, message: 'Fashion show updated successfully', data: updatedShow });
+        res.status(200).json({ success: true, message: 'Fashion show updated successfully', data: withPublicFiles(updatedShow, FILE_FIELDS) });
     } catch (err) {
         console.error("Update Error:", err);
         res.status(500).json({ success: false, message: err.message });

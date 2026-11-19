@@ -147,12 +147,17 @@ export const getStoredFileValue = (file) => file?.cloudinaryUrl || file?.filenam
 
 /**
  * Turns a stored file value into something the frontend can render directly.
- * Older records saved only a bare Cloudinary public_id (e.g. "packages/xp41kljg...")
- * instead of the URL, so the website built "/uploads/packages/..." links that 404.
- * Full URLs and local filenames ("1715000000000.jpg") are returned unchanged.
+ * - Full URLs and local filenames ("1715000000000.jpg") are returned unchanged.
+ * - Older testimonial/fashion-show records saved the server's disk path
+ *   ("/opt/render/project/src/uploads/1715000000000.png"); only the filename is kept.
+ * - Older records that saved a bare Cloudinary public_id ("packages/xp41kljg...")
+ *   are turned into the full Cloudinary URL.
  */
 export const toPublicFileUrl = (value, resourceType = 'image') => {
-    if (!value || /^https?:\/\//i.test(value) || value.startsWith('uploads/')) return value;
+    if (!value || typeof value !== 'string' || /^https?:\/\//i.test(value)) return value;
+
+    const diskPath = value.replace(/\\/g, '/').match(/(?:^|\/)uploads\/([^/]+)$/);
+    if (diskPath) return diskPath[1];
 
     const looksLikeCloudinaryId = value.includes('/') && !path.extname(value);
     if (looksLikeCloudinaryId && isCloudinaryConfigured()) {
@@ -160,4 +165,12 @@ export const toPublicFileUrl = (value, resourceType = 'image') => {
     }
 
     return value;
+};
+
+// Returns a plain copy of a Mongoose document with the given file fields made renderable
+export const withPublicFiles = (doc, fields) => {
+    if (!doc) return doc;
+    const obj = typeof doc.toObject === 'function' ? doc.toObject() : { ...doc };
+    for (const field of fields) obj[field] = toPublicFileUrl(obj[field]);
+    return obj;
 };

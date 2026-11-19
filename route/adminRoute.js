@@ -40,30 +40,30 @@ router.delete('/media/delete/:id', deleteMedia);
 
 // --- STUDENT ROUTES ---
 // Sahi Route Setup with Multer
-router.post('/student/add', upload.single('file'), addStudent);
+router.post('/student/add', upload.single('file'), persistUploads('students'), addStudent);
 router.get('/student/getall', getAllStudents);
 router.get('/student/get/:id', getStudentById);
 router.put('/student/update/:id', updateStudent);
 router.delete('/student/delete/:id', deleteStudent);
 
 //Review
-router.post('/reviews/add', upload.single('file'), addReview);
+router.post('/reviews/add', upload.single('file'), persistUploads('reviews'), addReview);
 router.get('/reviews/all', getAllReviews);
-router.put('/reviews/update/:id', upload.single('file'), updateReview); // <-- Yeh update ka route hai
+router.put('/reviews/update/:id', upload.single('file'), persistUploads('reviews'), updateReview); // <-- Yeh update ka route hai
 router.delete('/reviews/delete/:id', deleteReview);
 
 //class
-router.post('/courses/add', upload.single('file'), addCourse);
+router.post('/courses/add', upload.single('file'), persistUploads('courses'), addCourse);
 router.get('/courses/all', getAllCourses);
-router.put('/courses/update/:id', upload.single('file'), updateCourse); // <-- Yeh update ka route hai
+router.put('/courses/update/:id', upload.single('file'), persistUploads('courses'), updateCourse); // <-- Yeh update ka route hai
 router.delete('/courses/delete/:id', deleteCourse);
 
 
 
 // FASHION SHOW ROUTES
-router.post('/fashionshow/create', upload.fields([{ name: 'banner', maxCount: 1 }, { name: 'qrCode', maxCount: 1 }]), createFashionShow);
+router.post('/fashionshow/create', upload.fields([{ name: 'banner', maxCount: 1 }, { name: 'qrCode', maxCount: 1 }]), persistUploads('fashion-shows'), createFashionShow);
 router.get('/fashionshow/all', getAllFashionShows);
-router.put('/fashionshow/update/:id', upload.fields([{ name: 'banner', maxCount: 1 }, { name: 'qrCode', maxCount: 1 }]), updateFashionShow); 
+router.put('/fashionshow/update/:id', upload.fields([{ name: 'banner', maxCount: 1 }, { name: 'qrCode', maxCount: 1 }]), persistUploads('fashion-shows'), updateFashionShow); 
 router.delete('/fashionshow/delete/:id', deleteFashionShow);
 
 router.post('/fashionshow/register', registerForFashionShow);

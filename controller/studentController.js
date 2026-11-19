@@ -102,6 +102,10 @@
 // };
 
 import Student from '../models/studentModel.js';
+import { getStoredFileValue, withPublicFiles } from '../middleware/upload.js';
+
+// Image fields returned as URLs/filenames the website can render
+const FILE_FIELDS = ['photo'];
 
 // export const addStudent = async (req, res) => {
 //     try {
@@ -129,7 +133,7 @@ export const addStudent = async (req, res) => {
             ...req.body,
 
             // Save uploaded image filename
-            photo: req.file ? req.file.filename : ''
+            photo: getStoredFileValue(req.file) // Cloudinary URL, ya local filename
         });
 
         const savedStudent = await newStudent.save();
@@ -137,7 +141,7 @@ export const addStudent = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Student added successfully to academy',
-            data: savedStudent
+            data: withPublicFiles(savedStudent, FILE_FIELDS)
         });
 
     } catch (error) {
@@ -162,7 +166,7 @@ export const getAllStudents = async (req, res) => {
         res.status(200).json({
             success: true,
             count: students.length,
-            data: students
+            data: students.map((s) => withPublicFiles(s, FILE_FIELDS))
         });
     } catch (error) {
         res.status(500).json({
@@ -183,7 +187,7 @@ export const getStudentById = async (req, res) => {
         }
         res.status(200).json({
             success: true,
-            data: student
+            data: withPublicFiles(student, FILE_FIELDS)
         });
     } catch (error) {
         res.status(500).json({
@@ -209,7 +213,7 @@ export const updateStudent = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Student details updated successfully',
-            data: updatedStudent
+            data: withPublicFiles(updatedStudent, FILE_FIELDS)
         });
     } catch (error) {
         res.status(500).json({

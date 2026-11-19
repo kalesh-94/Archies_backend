@@ -1,11 +1,15 @@
 import Course from '../models/courseModel.js';
+import { getStoredFileValue, withPublicFiles } from '../middleware/upload.js';
+
+// Image fields returned as URLs/filenames the website can render
+const FILE_FIELDS = ['image'];
 
 
 // Add Course (Image upload ke sath)
 export const addCourse = async (req, res) => {
   try {
     const { title, description, duration, price, rating, badge } = req.body;
-    const image = req.file ? req.file.filename : '';
+    const image = getStoredFileValue(req.file); // Cloudinary URL, ya local filename
 
     const newCourse = await Course.create({
       title,
@@ -20,7 +24,7 @@ export const addCourse = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Course added successfully',
-      data: newCourse
+      data: withPublicFiles(newCourse, FILE_FIELDS)
     });
   } catch (error) {
     res.status(400).json({
@@ -38,7 +42,7 @@ export const getAllCourses = async (req, res) => {
     res.status(200).json({
       success: true,
       count: courses.length,
-      data: courses
+      data: courses.map((c) => withPublicFiles(c, FILE_FIELDS))
     });
   } catch (error) {
     res.status(500).json({
@@ -56,7 +60,7 @@ export const updateCourse = async (req, res) => {
     
     let updateData = { title, description, duration, price, rating, badge };
     if (req.file) {
-      updateData.image = req.file.filename;
+      updateData.image = getStoredFileValue(req.file);
     }
 
     const updatedCourse = await Course.findByIdAndUpdate(
@@ -75,7 +79,7 @@ export const updateCourse = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Course updated successfully',
-      data: updatedCourse
+      data: withPublicFiles(updatedCourse, FILE_FIELDS)
     });
   } catch (error) {
     res.status(400).json({
